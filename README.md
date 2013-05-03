@@ -9,7 +9,7 @@ The script will do the following:
   1. Shutdown your linode.
   2. Create the root disk from the StackScript.
   3. Create the configuration
-  4. Reboot your linode with the new deploy.
+  4. Boot your linode with the new deploy.
 
 usage
 =============

@@ -18,9 +18,10 @@ usage
   2. Run "deploy.sh" 
   3. You will see message like:
 
+"""
   Shutdown linode successfully, job id: 999999
   Create disk successfully, disk id: 999999
   Create config successfully, config id: 999999
   Boot linode successfully, job id: 999999
-
+"""
 

@@ -1,8 +1,7 @@
 linode_deploy
 =============
 
-This script has to work with below StackScript.
-https://manager.linode.com/linodes/deploy/linode264945?StackScriptID=6577
+This script has to work with the StackScript: https://manager.linode.com/linodes/deploy/linode264945?StackScriptID=6577
 
 The bash script to deploy a new linode with curl
 The script will do the following:

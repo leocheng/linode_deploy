@@ -5,6 +5,8 @@ linode_deploy
       sshd, privoxy, tor, transmission, ssmtp, stunnel, ufw, nginx, timezone, etc.
     This script has to work with below StackScript:
     https://manager.linode.com/linodes/deploy/linode264945?StackScriptID=6577
+    The source of the above StackScript is:
+    http://www.linode.com/stackscripts/view/?StackScriptID=6577
 
     The script will do the following:
 

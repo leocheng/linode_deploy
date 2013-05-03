@@ -13,6 +13,9 @@ linode_deploy
       3. Create the configuration.
       4. Boot your linode with the new deploy.
 
+    For more information about the Linode API, check:
+      http://www.linode.com/api/
+
 usage
 =============
     1. Edit the "env.dummy" file as you need, after you have finished the editing, rename it to "env".

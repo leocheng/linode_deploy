@@ -1,14 +1,15 @@
 linode_deploy
 =============
 
+This is the script I use to deploy my own linode working machine.
+The script will call linode API with curl and set up: sshd, privoxy, tor, transmission, ssmtp, stunnel, ufw, nginx, timezone, etc.
 This script has to work with the StackScript: https://manager.linode.com/linodes/deploy/linode264945?StackScriptID=6577
 
-The bash script to deploy a new linode with curl
 The script will do the following:
 
   1. Shutdown your linode.
   2. Create the root disk from the StackScript.
-  3. Create the configuration
+  3. Create the configuration.
   4. Boot your linode with the new deploy.
 
 usage

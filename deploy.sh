@@ -69,10 +69,11 @@ StackScriptUDFResponses=\
 \"transmission_user\":\"${19}\",
 \"transmission_passwd\":\"${20}\",
 \"transmission_port\":\"${21}\",
-\"opt_disk\":\"${22}\",
-\"allow_ip\":\"${23}\",
-\"tz_data\":\"${24}\",
-\"label_data\":\"${25}\"
+\"afp_port\":\"${22}\",
+\"opt_disk\":\"${23}\",
+\"allow_ip\":\"${24}\",
+\"tz_data\":\"${25}\",
+\"label_data\":\"${26}\"
 }")
 	#echo $RESULT_CREATE_DISK 2>&1
 	echo $(echo $RESULT_CREATE_DISK | sed -n -e "s/.*DiskID\":\([0-9]*\)}.*$/\1/p")
@@ -170,6 +171,7 @@ ROOT_ID=$(create_disk $STACKSCRIPT_ID $DISTRIBUTION_ID $LABEL $SIZE $ROOT_PASS \
 	$UDF_TRANSMISSION_USER \
 	$UDF_TRANSMISSION_PASSWD \
 	$UDF_TRANSMISSION_PORT \
+	$UDF_AFP_PORT \
 	$UDF_OPT_DISK \
 	$UDF_ALLOW_IP \
 	$UDF_TZ_DATA \

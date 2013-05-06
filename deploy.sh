@@ -13,18 +13,40 @@ function get_script {
 }
 
 function linode_reboot {
-	RESULT_REBOOT=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.reboot -d LinodeID=$1)
+	RESULT_REBOOT=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.reboot -d LinodeID=$LINODE_ID)
 	echo $(echo $RESULT_REBOOT | sed -n -e "s/.*JobID\":\([0-9]*\)}.*$/\1/p")
 }
 
 function linode_boot {
-	RESULT_BOOT=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.boot -d LinodeID=$1 -d ConfigID=$2)
+	RESULT_BOOT=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.boot -d LinodeID=$LINODE_ID -d ConfigID=$2)
 	echo $(echo $RESULT_BOOT | sed -n -e "s/.*JobID\":\([0-9]*\)}.*$/\1/p")
 }
 
 function linode_shutdown {
-	RESULT_SHUTDOWN=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.shutdown -d LinodeID=$1)
+	RESULT_SHUTDOWN=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.shutdown -d LinodeID=$LINODE_ID)
+	#echo $RESULT_SHUTDOWN 
 	echo $(echo $RESULT_SHUTDOWN | sed -n -e "s/.*JobID\":\([0-9]*\)}.*$/\1/p") 
+}
+
+function get_current_root_id {
+	RESULT_ROOT_ID=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.disk.list -d LinodeID=$LINODE_ID)
+	echo $(echo $RESULT_ROOT_ID | sed -n -e "s/.*LABEL\":\"disk_\([0-9]*\)\".*DISKID\":\([0-9]*\).*/\2/p")
+}
+
+function get_current_config_id {
+	RESULT_CONFIG_ID=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.config.list -d LinodeID=$LINODE_ID)
+	echo $(echo $RESULT_CONFIG_ID | sed -n -e "s/.*Label\":\"config_\([0-9]*\)\".*ConfigID\":\([0-9]*\).*/\2/p")
+}
+
+
+function delete_disk {
+	RESULT_DELETE_DISK=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.disk.delete -d LinodeID=$LINODE_ID -d DiskID=$1)
+	echo $(echo $RESULT_DELETE_DISK | sed -n -e "s/.*DiskID\":\([0-9]*\).*$/\1/p")
+}
+
+function delete_config {
+	RESULT_DELETE_CONFIG=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.config.delete -d LinodeID=$LINODE_ID -d ConfigID=$1)
+	echo $(echo $RESULT_DELETE_CONFIG | sed -n -e "s/.*ConfigID\":\([0-9]*\).*$/\1/p")
 }
 
 function create_disk {
@@ -54,6 +76,7 @@ StackScriptUDFResponses=\
 \"tz_data\":\"${24}\",
 \"label_data\":\"${25}\"
 }")
+	#echo $RESULT_CREATE_DISK 2>&1
 	echo $(echo $RESULT_CREATE_DISK | sed -n -e "s/.*DiskID\":\([0-9]*\)}.*$/\1/p")
 }
 
@@ -62,8 +85,11 @@ function create_config {
 	echo $(echo $RESULT_CREATE_CONFIG | sed -n -e "s/.*ConfigID\":\([0-9]*\)}.*$/\1/p")
 }
 
+
+
+
 #
-SHUTDOWN_ID=$(linode_shutdown $LINODE_ID)
+SHUTDOWN_ID=$(linode_shutdown)
 if [ -z "$SHUTDOWN_ID" ]
 then
 	echo "Failed to shutdown linode"
@@ -72,6 +98,52 @@ else
 	echo "Shutdown linode successfully, job id: $SHUTDOWN_ID"
 fi 
 
+#
+CURRENT_ROOT_ID=$(get_current_root_id)
+if [ -z "$CURRENT_ROOT_ID" ]
+then
+	echo "Failed to get current root disk id"
+	exit 1
+else
+	echo "Current root disk id: $CURRENT_ROOT_ID"
+fi 
+
+CURRENT_CONFIG_ID=$(get_current_config_id)
+if [ -z "$CURRENT_CONFIG_ID" ]
+then
+	echo "Failed to get current config id"
+	exit 1
+else
+	echo "Current config id: $CURRENT_CONFIG_ID"
+fi 
+
+echo "CAUTION!!!!! YOU ARE ABOUT TO REMOVE THE CURRENT CONFIG AND ROOT DISK !!!!!!!!"
+echo "CAUTION!!!!! THE REMOVED CONFIG AND DISK ARE NOT RECOVERIABLE !!!!!!!!"
+echo "CAUTION!!!!! HIT ENTER TO CONTINUE... !!!!!!!!"
+read
+
+DELETED_ROOT_ID=$(delete_disk $CURRENT_ROOT_ID)
+if [ "$CURRENT_ROOT_ID" -ne "$DELETED_ROOT_ID" ]
+then
+	echo "Failed to delete root disk with id: $CURRENT_ROOT_ID"
+	exit 1
+else
+	echo "Successfully delete root disk with id: $CURRENT_ROOT_ID"
+fi 
+
+
+DELETED_CONFIG_ID=$(delete_config $CURRENT_CONFIG_ID)
+if [ "$CURRENT_CONFIG_ID" -ne "$DELETED_CONFIG_ID" ]
+then
+	echo "Failed to delete config with id: $CURRENT_CONFIG_ID"
+	exit 1
+else
+	echo "Successfully delete config with id: $CURRENT_CONFIG_ID"
+fi 
+
+# wait for the root disk being deleted
+echo "Waiting for the root disk being deleted...."
+sleep 5
 
 #
 ROOT_ID=$(create_disk $STACKSCRIPT_ID $DISTRIBUTION_ID $LABEL $SIZE $ROOT_PASS \

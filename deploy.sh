@@ -2,8 +2,6 @@
 set -o nounset
 set -o errexit
 
-source "./env"
-
 CURL_PARAMS="curl -s -X POST"
 API_URL="https://api.linode.com"
 
@@ -86,6 +84,15 @@ function create_config {
 }
 
 
+# check if env exists
+ENV_FILE="./env"
+if [ -f "$ENV_FILE" ] 
+then
+	source "$ENV_FILE"
+else
+	echo "$ENV_FILE doesn't exist, please edit ./env.dummy as you need, then save it as ./env"
+	exit 1
+fi
 
 
 #

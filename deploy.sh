@@ -26,6 +26,11 @@ function linode_shutdown {
 	echo $(echo $RESULT_SHUTDOWN | sed -n -e "s/.*JobID\":\([0-9]*\)}.*$/\1/p") 
 }
 
+function job_if_pending {
+	echo 	
+
+}
+
 function get_current_root_id {
 	RESULT_ROOT_ID=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.disk.list -d LinodeID=$LINODE_ID)
 	echo $(echo $RESULT_ROOT_ID | sed -n -e "s/.*LABEL\":\"disk_\([0-9]*\)\".*DISKID\":\([0-9]*\).*/\2/p")
@@ -36,6 +41,55 @@ function get_current_config_id {
 	echo $(echo $RESULT_CONFIG_ID | sed -n -e "s/.*Label\":\"config_\([0-9]*\)\".*ConfigID\":\([0-9]*\).*/\2/p")
 }
 
+
+function purge {
+
+	echo "!!!!!!!! CAUTION! YOU ARE ABOUT TO REMOVE THE CURRENT CONFIG AND ROOT DISK !!!!!!!!"
+	echo "!!!!!!!! CAUTION! THE REMOVED CONFIG AND DISK ARE NOT RECOVERIABLE !!!!!!!!"
+	echo "!!!!!!!! CAUTION! CTRL+C TO CANCEL OR HIT ENTER TO CONTINUE... !!!!!!!!"
+	read
+
+	#
+	CURRENT_ROOT_ID=$(get_current_root_id)
+	if [ -z "$CURRENT_ROOT_ID" ]
+	then
+		echo "Failed to get current root disk id"
+		exit 1
+	else
+		echo "Current root disk id: $CURRENT_ROOT_ID"
+	fi 
+
+	CURRENT_CONFIG_ID=$(get_current_config_id)
+	if [ -z "$CURRENT_CONFIG_ID" ]
+	then
+		echo "Failed to get current config id"
+		exit 1
+	else
+		echo "Current config id: $CURRENT_CONFIG_ID"
+	fi 
+
+	#
+	DELETED_ROOT_ID=$(delete_disk $CURRENT_ROOT_ID)
+	if [ "$CURRENT_ROOT_ID" -ne "$DELETED_ROOT_ID" ]
+	then
+		echo "Failed to delete root disk with id: $CURRENT_ROOT_ID"
+		exit 1
+	else
+		echo "Waiting for the root disk being deleted...."
+		sleep 10
+		echo "Successfully delete root disk with id: $CURRENT_ROOT_ID"
+	fi 
+
+	#
+	DELETED_CONFIG_ID=$(delete_config $CURRENT_CONFIG_ID)
+	if [ "$CURRENT_CONFIG_ID" -ne "$DELETED_CONFIG_ID" ]
+	then
+		echo "Failed to delete config with id: $CURRENT_CONFIG_ID"
+		exit 1
+	else
+		echo "Successfully delete config with id: $CURRENT_CONFIG_ID"
+	fi 
+}
 
 function delete_disk {
 	RESULT_DELETE_DISK=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.disk.delete -d LinodeID=$LINODE_ID -d DiskID=$1)
@@ -95,31 +149,6 @@ else
 	exit 1
 fi
 
-
-#
-CURRENT_ROOT_ID=$(get_current_root_id)
-if [ -z "$CURRENT_ROOT_ID" ]
-then
-	echo "Failed to get current root disk id"
-	exit 1
-else
-	echo "Current root disk id: $CURRENT_ROOT_ID"
-fi 
-
-CURRENT_CONFIG_ID=$(get_current_config_id)
-if [ -z "$CURRENT_CONFIG_ID" ]
-then
-	echo "Failed to get current config id"
-	exit 1
-else
-	echo "Current config id: $CURRENT_CONFIG_ID"
-fi 
-
-echo "!!!!!!!! CAUTION! YOU ARE ABOUT TO REMOVE THE CURRENT CONFIG AND ROOT DISK !!!!!!!!"
-echo "!!!!!!!! CAUTION! THE REMOVED CONFIG AND DISK ARE NOT RECOVERIABLE !!!!!!!!"
-echo "!!!!!!!! CAUTION! CTRL+C TO CANCEL OR HIT ENTER TO CONTINUE... !!!!!!!!"
-read
-
 #
 SHUTDOWN_ID=$(linode_shutdown)
 if [ -z "$SHUTDOWN_ID" ]
@@ -127,32 +156,21 @@ then
 	echo "Failed to shutdown linode"
 	exit 1
 else
+	# wait for the shutdown
+	echo "Shutting down the running Linode...."
+	sleep 5
 	echo "Shutdown linode successfully, job id: $SHUTDOWN_ID"
 fi 
 
-#
-DELETED_ROOT_ID=$(delete_disk $CURRENT_ROOT_ID)
-if [ "$CURRENT_ROOT_ID" -ne "$DELETED_ROOT_ID" ]
-then
-	echo "Failed to delete root disk with id: $CURRENT_ROOT_ID"
-	exit 1
-else
-	echo "Successfully delete root disk with id: $CURRENT_ROOT_ID"
-fi 
 
 #
-DELETED_CONFIG_ID=$(delete_config $CURRENT_CONFIG_ID)
-if [ "$CURRENT_CONFIG_ID" -ne "$DELETED_CONFIG_ID" ]
+if [ "$#" -eq "1" ]
 then
-	echo "Failed to delete config with id: $CURRENT_CONFIG_ID"
-	exit 1
-else
-	echo "Successfully delete config with id: $CURRENT_CONFIG_ID"
-fi 
-
-# wait for the root disk being deleted
-echo "Waiting for the root disk being deleted...."
-sleep 5
+	if [ "$1" == "purge" ]
+	then
+		purge
+	fi
+fi
 
 #
 ROOT_ID=$(create_disk $STACKSCRIPT_ID $DISTRIBUTION_ID $LABEL $SIZE $ROOT_PASS \

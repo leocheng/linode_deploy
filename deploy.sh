@@ -97,16 +97,6 @@ fi
 
 
 #
-SHUTDOWN_ID=$(linode_shutdown)
-if [ -z "$SHUTDOWN_ID" ]
-then
-	echo "Failed to shutdown linode"
-	exit 1
-else
-	echo "Shutdown linode successfully, job id: $SHUTDOWN_ID"
-fi 
-
-#
 CURRENT_ROOT_ID=$(get_current_root_id)
 if [ -z "$CURRENT_ROOT_ID" ]
 then
@@ -125,11 +115,22 @@ else
 	echo "Current config id: $CURRENT_CONFIG_ID"
 fi 
 
-echo "CAUTION!!!!! YOU ARE ABOUT TO REMOVE THE CURRENT CONFIG AND ROOT DISK !!!!!!!!"
-echo "CAUTION!!!!! THE REMOVED CONFIG AND DISK ARE NOT RECOVERIABLE !!!!!!!!"
-echo "CAUTION!!!!! HIT ENTER TO CONTINUE... !!!!!!!!"
+echo "!!!!!!!! CAUTION! YOU ARE ABOUT TO REMOVE THE CURRENT CONFIG AND ROOT DISK !!!!!!!!"
+echo "!!!!!!!! CAUTION! THE REMOVED CONFIG AND DISK ARE NOT RECOVERIABLE !!!!!!!!"
+echo "!!!!!!!! CAUTION! CTRL+C TO CANCEL OR HIT ENTER TO CONTINUE... !!!!!!!!"
 read
 
+#
+SHUTDOWN_ID=$(linode_shutdown)
+if [ -z "$SHUTDOWN_ID" ]
+then
+	echo "Failed to shutdown linode"
+	exit 1
+else
+	echo "Shutdown linode successfully, job id: $SHUTDOWN_ID"
+fi 
+
+#
 DELETED_ROOT_ID=$(delete_disk $CURRENT_ROOT_ID)
 if [ "$CURRENT_ROOT_ID" -ne "$DELETED_ROOT_ID" ]
 then
@@ -139,7 +140,7 @@ else
 	echo "Successfully delete root disk with id: $CURRENT_ROOT_ID"
 fi 
 
-
+#
 DELETED_CONFIG_ID=$(delete_config $CURRENT_CONFIG_ID)
 if [ "$CURRENT_CONFIG_ID" -ne "$DELETED_CONFIG_ID" ]
 then

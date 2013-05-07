@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -o nounset
-set -o errexit
 
 CURL_PARAMS="curl -s -X POST"
 API_URL="https://api.linode.com"
@@ -26,9 +25,28 @@ function linode_shutdown {
 	echo $(echo $RESULT_SHUTDOWN | sed -n -e "s/.*JobID\":\([0-9]*\)}.*$/\1/p") 
 }
 
-function job_if_pending {
-	echo 	
+function wait_job {
+	MAX_WAIT=20
+	echo -n "Waiting for job $1 "
+	for (( i = 1 ; i <= "$MAX_WAIT" ; i++))
+	do
+		echo -n "."
+		sleep "0.5"
+		# "JOBID":11591644,"HOST_SUCCESS":1,
+		RESULT_IF_PENDING=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.job.list -d LinodeID=$LINODE_ID)
+		#echo "$RESULT_IF_PENDING"
+		#echo "$RESULT_IF_PENDING" | grep "\"JOBID\":${1},\"HOST_SUCCESS\":1"
+		#echo $RESULT_IF_PENDING | grep "\"JOBID\":$1,\"HOST_SUCCESS\":1"
+		RESULT_IF_PENDING2=$(echo $RESULT_IF_PENDING | sed -n -e "s/.*\"JOBID\":$1,\"HOST_SUCCESS\":1.*/OK/p")
 
+		if [ "$RESULT_IF_PENDING2" == "OK" ] 
+		then	
+			echo "done"
+			return 0
+		fi
+	done
+	echo "It is taking too long to finish the job, abort."
+	return 1
 }
 
 function get_current_root_id {
@@ -40,7 +58,6 @@ function get_current_config_id {
 	RESULT_CONFIG_ID=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.config.list -d LinodeID=$LINODE_ID)
 	echo $(echo $RESULT_CONFIG_ID | sed -n -e "s/.*Label\":\"config_\([0-9]*\)\".*ConfigID\":\([0-9]*\).*/\2/p")
 }
-
 
 function purge {
 
@@ -69,36 +86,42 @@ function purge {
 	fi 
 
 	#
-	DELETED_ROOT_ID=$(delete_disk $CURRENT_ROOT_ID)
-	if [ "$CURRENT_ROOT_ID" -ne "$DELETED_ROOT_ID" ]
+	DELETED_ROOT_JOB_ID=$(delete_disk $CURRENT_ROOT_ID)
+	if [ -z "$DELETED_ROOT_JOB_ID" ]
 	then
-		echo "Failed to delete root disk with id: $CURRENT_ROOT_ID"
+		echo "Failed to delete root disk with id: $DELETED_ROOT_JOB_ID"
 		exit 1
 	else
-		echo "Waiting for the root disk being deleted...."
-		sleep 10
-		echo "Successfully delete root disk with id: $CURRENT_ROOT_ID"
+		echo "Deleting the current root disk...."
+		wait_job "$DELETED_ROOT_JOB_ID"
+		if [ "$?" -eq 0 ]
+		then 
+			echo "Deleted current root disk successfully, job id: $DELETED_ROOT_JOB_ID"
+		else
+			exit 1
+		fi
 	fi 
 
 	#
 	DELETED_CONFIG_ID=$(delete_config $CURRENT_CONFIG_ID)
-	if [ "$CURRENT_CONFIG_ID" -ne "$DELETED_CONFIG_ID" ]
+	if [ "$DELETED_CONFIG_ID" != "$CURRENT_CONFIG_ID" ]
 	then
-		echo "Failed to delete config with id: $CURRENT_CONFIG_ID"
+		echo "Failed to delete config with id: $DELETED_CONFIG_ID"
 		exit 1
 	else
-		echo "Successfully delete config with id: $CURRENT_CONFIG_ID"
+		echo "Successfully delete config with id: $DELETED_CONFIG_ID"
 	fi 
 }
 
 function delete_disk {
 	RESULT_DELETE_DISK=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.disk.delete -d LinodeID=$LINODE_ID -d DiskID=$1)
-	echo $(echo $RESULT_DELETE_DISK | sed -n -e "s/.*DiskID\":\([0-9]*\).*$/\1/p")
+	echo $(echo $RESULT_DELETE_DISK | sed -n -e "s/.*JobID\":\([0-9]*\).*$/\1/p")
 }
 
 function delete_config {
 	RESULT_DELETE_CONFIG=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.config.delete -d LinodeID=$LINODE_ID -d ConfigID=$1)
 	echo $(echo $RESULT_DELETE_CONFIG | sed -n -e "s/.*ConfigID\":\([0-9]*\).*$/\1/p")
+	#echo $RESULT_DELETE_CONFIG
 }
 
 function create_disk {
@@ -138,7 +161,6 @@ function create_config {
 	echo $(echo $RESULT_CREATE_CONFIG | sed -n -e "s/.*ConfigID\":\([0-9]*\)}.*$/\1/p")
 }
 
-
 # check if env exists
 ENV_FILE="./env"
 if [ -f "$ENV_FILE" ] 
@@ -149,6 +171,7 @@ else
 	exit 1
 fi
 
+
 #
 SHUTDOWN_ID=$(linode_shutdown)
 if [ -z "$SHUTDOWN_ID" ]
@@ -158,10 +181,14 @@ then
 else
 	# wait for the shutdown
 	echo "Shutting down the running Linode...."
-	sleep 5
-	echo "Shutdown linode successfully, job id: $SHUTDOWN_ID"
+	wait_job "$SHUTDOWN_ID"
+	if [ "$?" -eq 0 ]
+	then 
+		echo "Shutdown linode successfully, job id: $SHUTDOWN_ID"
+	else
+		exit 1
+	fi
 fi 
-
 
 #
 if [ "$#" -eq "1" ]
@@ -202,7 +229,7 @@ then
 	echo "Failed to create disk"
 	exit 1
 else
-	echo "Create disk successfully, disk id: $ROOT_ID"
+	echo "Created root disk successfully, job id: $ROOT_ID"
 fi 
 
 #
@@ -213,7 +240,7 @@ then
 	echo "Failed to create config"
 	exit 1
 else
-	echo "Create config successfully, config id: $CONFIG_ID"
+	echo "Created config successfully, config id: $CONFIG_ID"
 fi 
 
 #

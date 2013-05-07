@@ -32,11 +32,7 @@ function wait_job {
 	do
 		echo -n "."
 		sleep "0.5"
-		# "JOBID":11591644,"HOST_SUCCESS":1,
 		RESULT_IF_PENDING=$($CURL_PARAMS $API_URL -d api_key=$API_KEY -d api_action=linode.job.list -d LinodeID=$LINODE_ID)
-		#echo "$RESULT_IF_PENDING"
-		#echo "$RESULT_IF_PENDING" | grep "\"JOBID\":${1},\"HOST_SUCCESS\":1"
-		#echo $RESULT_IF_PENDING | grep "\"JOBID\":$1,\"HOST_SUCCESS\":1"
 		RESULT_IF_PENDING2=$(echo $RESULT_IF_PENDING | sed -n -e "s/.*\"JOBID\":$1,\"HOST_SUCCESS\":1.*/OK/p")
 
 		if [ "$RESULT_IF_PENDING2" == "OK" ] 

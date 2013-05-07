@@ -26,7 +26,7 @@ function linode_shutdown {
 }
 
 function wait_job {
-	MAX_WAIT=20
+	MAX_WAIT=25 # about 13 seconds
 	echo -n "Waiting for job $1 "
 	for (( i = 1 ; i <= "$MAX_WAIT" ; i++))
 	do
